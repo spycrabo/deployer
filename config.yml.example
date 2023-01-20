@@ -1,0 +1,26 @@
+server:
+  port: 1111
+
+webhooks:
+  test:
+    path: "/test"
+    tasks:
+      - test
+
+runner:
+  dir:
+    path: "/path/to/queue/files"
+
+tasks:
+  test:
+    command: "test.sh"
+    notifications:
+      success: "success"
+      failure: "error"
+
+notifiers:
+  telegram:
+    botToken: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+    chatId: 11111
+    params:
+      parse_mode: "Markdown"
