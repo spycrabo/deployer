@@ -10,6 +10,7 @@ type Repo interface {
 	PushTask(taskName string, vars map[string]string) error
 	GetPendingTasks() (map[uuid.UUID]RepoTask, error)
 	GetNextTask() (*uuid.UUID, *RepoTask, error)
+	TotalRunningTasks() (uint, error)
 	StartTask(uuid.UUID) error
 	FinishTask(uuid.UUID) error
 }
@@ -19,9 +20,9 @@ type RepoTask struct {
 	Variables map[string]string
 }
 
-func NewRepo(conf *config.Config) (Repo, error) {
-	if conf.Runner.Dir != nil {
-		r, err := NewDirRepo(conf.Runner.Dir)
+func NewRepo(conf config.Runner) (Repo, error) {
+	if conf.Dir != nil {
+		r, err := NewDirRepo(conf.Dir)
 		if err != nil {
 			return nil, err
 		}

@@ -5,26 +5,30 @@ import (
 	"bc-deployer/internal/notifier"
 	"bc-deployer/internal/runner/runner_repo"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"os/exec"
+	"strings"
 )
 
 type Executor struct {
-	repo      runner_repo.Repo
-	notifiers notifier.Notifiers
-	conf      conf
+	repo        runner_repo.Repo
+	notifiers   notifier.Notifiers
+	conf        conf
+	concurrency uint
 }
 
 type TaskResult struct {
-	Out []byte
-	Err error
+	Task *runner_repo.RepoTask
+	Out  []byte
+	Err  error
 }
 
 type conf struct {
 	Tasks map[string]config.Task
 }
 
-func NewExecutor(repo runner_repo.Repo, notifiers notifier.Notifiers, tasks map[string]config.Task) (*Executor, error) {
+func NewExecutor(repo runner_repo.Repo, notifiers notifier.Notifiers, tasks map[string]config.Task, concurrency uint) (*Executor, error) {
 	if tasks == nil {
 		return nil, errors.New("empty config passed")
 	}
@@ -34,11 +38,23 @@ func NewExecutor(repo runner_repo.Repo, notifiers notifier.Notifiers, tasks map[
 		conf: conf{
 			Tasks: tasks,
 		},
+		concurrency: concurrency,
 	}
 	return executor, nil
 }
 
 func (e *Executor) Run() ([]TaskResult, error) {
+	if e.concurrency > 0 {
+		totalRunningTasks, err := e.repo.TotalRunningTasks()
+		if err != nil {
+			return nil, err
+		}
+
+		if totalRunningTasks >= e.concurrency {
+			return nil, errors.New("max concurrency reached")
+		}
+	}
+
 	outputs := make([]TaskResult, 0)
 
 	for {
@@ -59,9 +75,15 @@ func (e *Executor) Run() ([]TaskResult, error) {
 
 		output, innerErr := e.runSingleTask(*id, *task)
 		outputs = append(outputs, TaskResult{
-			Out: output,
-			Err: innerErr,
+			Task: task,
+			Out:  output,
+			Err:  innerErr,
 		})
+		if innerErr == nil {
+			e.notifyOnSuccess(*task, e.conf.Tasks[task.TaskName])
+		} else {
+			e.notifyOnFailure(*task, e.conf.Tasks[task.TaskName])
+		}
 	}
 }
 
@@ -80,13 +102,16 @@ func (e *Executor) runSingleTask(id uuid.UUID, repoTask runner_repo.RepoTask) ([
 		return nil, errors.New("unknown taskConfig passed: " + repoTask.TaskName)
 	}
 
-	cmd := exec.Command("/bin/bash", "-c", taskConfig.Command)
+	cmd := exec.Command("/bin/bash", "-c", buildCommand(repoTask, taskConfig))
 	if taskConfig.Dir != nil {
 		cmd.Dir = *taskConfig.Dir
 	}
 	out, err := cmd.Output()
 	if err != nil {
-		e.notifyOnFailure(repoTask, taskConfig)
+		err2 := e.repo.FinishTask(id)
+		if err2 != nil {
+			return nil, errors.New(fmt.Sprintf("%v; %v", err, err2))
+		}
 		return nil, err
 	}
 
@@ -94,7 +119,6 @@ func (e *Executor) runSingleTask(id uuid.UUID, repoTask runner_repo.RepoTask) ([
 	if err != nil {
 		return nil, err
 	}
-	e.notifyOnSuccess(repoTask, taskConfig)
 	return out, nil
 }
 
@@ -108,8 +132,22 @@ func (e *Executor) notifyOnSuccess(t runner_repo.RepoTask, c config.Task) {
 
 func (e *Executor) notifyOnFailure(repoTask runner_repo.RepoTask, task config.Task) {
 	msg := "Task " + repoTask.TaskName + " failed"
-	if task.Notifications.Success != nil {
-		msg = *task.Notifications.Success
+	if task.Notifications.Failure != nil {
+		msg = *task.Notifications.Failure
 	}
 	e.notifiers.Notify(msg)
+}
+
+func buildCommand(task runner_repo.RepoTask, conf config.Task) string {
+	cmd := ""
+	vars := make([]string, 0)
+	for k, v := range task.Variables {
+		vars = append(vars, k+"=\""+v+"\"")
+	}
+	cmd += strings.Join(vars, " ")
+	if len(cmd) > 0 {
+		cmd += " && "
+	}
+	cmd += conf.Command
+	return cmd
 }

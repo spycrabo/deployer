@@ -3,6 +3,7 @@ package main
 import (
 	"bc-deployer/internal/config"
 	"bc-deployer/internal/listener"
+	"bc-deployer/internal/listener/validator"
 	"bc-deployer/internal/runner/runner_repo"
 	"flag"
 	"fmt"
@@ -20,13 +21,19 @@ func main() {
 		return
 	}
 
-	repo, err := runner_repo.NewRepo(conf)
+	repo, err := runner_repo.NewRepo(conf.Runner)
 	if err != nil {
 		output(fmt.Sprintf("Error initializing repo: \n%v", err))
 		return
 	}
 
-	api := listener.NewApi(conf.Server.Port, repo)
+	validators, err := validator.NewValidators(conf.Validators)
+	if err != nil {
+		output(fmt.Sprintf("Error initializing validators: \n%v", err))
+		return
+	}
+
+	api := listener.NewApi(conf.Server.Port, repo, validators)
 
 	output(fmt.Sprintf("Starting API on port %d", conf.Server.Port))
 

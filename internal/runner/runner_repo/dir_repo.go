@@ -119,6 +119,26 @@ func (r *DirRepo) FinishTask(task uuid.UUID) error {
 	return os.Remove(runningPath)
 }
 
+func (r *DirRepo) TotalRunningTasks() (uint, error) {
+	files, err := os.ReadDir(r.conf.Path)
+	if err != nil {
+		return 0, err
+	}
+
+	var total uint
+	total = 0
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(file.Name(), runningTaskSuffix) {
+			total++
+		}
+	}
+
+	return total, nil
+}
+
 func getTaskFileName(taskUuid uuid.UUID) string {
 	return taskPrefix + taskUuid.String()
 }

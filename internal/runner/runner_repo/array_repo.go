@@ -58,3 +58,7 @@ func (r ArrayRepo) FinishTask(uuid uuid.UUID) error {
 	delete(r.processingTasks, uuid)
 	return nil
 }
+
+func (r ArrayRepo) TotalRunningTasks() (uint, error) {
+	return uint(len(r.processingTasks)), nil
+}

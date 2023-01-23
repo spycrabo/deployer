@@ -8,11 +8,12 @@ import (
 )
 
 type Config struct {
-	Server    *Server            `yaml:"server"`
-	Webhooks  map[string]Webhook `yaml:"webhooks"`
-	Runner    Runner             `yaml:"runner"`
-	Tasks     map[string]Task    `yaml:"tasks"`
-	Notifiers Notifiers          `yaml:"notifiers"`
+	Server     *Server            `yaml:"server"`
+	Webhooks   map[string]Webhook `yaml:"webhooks"`
+	Validators ValidatorsConfig   `yaml:"validators"`
+	Runner     Runner             `yaml:"runner"`
+	Tasks      map[string]Task    `yaml:"tasks"`
+	Notifiers  Notifiers          `yaml:"notifiers"`
 }
 
 type Server struct {
@@ -21,26 +22,30 @@ type Server struct {
 
 type Webhook struct {
 	Path       string            `yaml:"path"`
-	Validators Validators        `yaml:"validators"`
+	Validators ValidatorsNames   `yaml:"validators"`
+	When       map[string]string `yaml:"when"`
 	Mapenv     map[string]string `yaml:"mapenv"`
 	Tasks      []string          `yaml:"tasks"`
 }
 
-type Validators struct {
-	Gitlab *GitlabValidator `yaml:"gitlab"`
-	Fake   *FakeValidator
+type ValidatorsNames []string
+
+type ValidatorsConfig map[string]ValidatorConfig
+
+type ValidatorConfig struct {
+	Driver  string                 `yaml:"driver"`
+	Options ValidatorOptionsConfig `yaml:"options"`
 }
 
-type GitlabValidator struct {
-	Token string `yaml:"token"`
-}
+type ValidatorOptionsConfig map[string]string
 
 type FakeValidator struct {
 	ModeSuccess bool
 }
 
 type Runner struct {
-	Dir *DirRunner `yaml:"dir"`
+	Concurrency uint       `default:"1" yaml:"concurrency"`
+	Dir         *DirRunner `yaml:"dir"`
 }
 
 type DirRunner struct {

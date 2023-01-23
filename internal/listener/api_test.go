@@ -2,6 +2,7 @@ package listener
 
 import (
 	"bc-deployer/internal/config"
+	"bc-deployer/internal/listener/validator"
 	"bc-deployer/internal/runner/runner_repo"
 	"io"
 	"net/http"
@@ -10,14 +11,14 @@ import (
 )
 
 func newTestApi() *Api {
-	return NewApi(0, runner_repo.NewFakeRepo(true))
+	return NewApi(0, runner_repo.NewFakeRepo(true), validator.Validators{})
 }
 
 func newTestWebhook() (string, config.Webhook) {
 	whName := "test"
 	wh := config.Webhook{
 		Path:       "/test",
-		Validators: config.Validators{},
+		Validators: []string{},
 		Mapenv:     nil,
 		Tasks:      nil,
 	}
@@ -76,12 +77,10 @@ func TestApi_WebhookHandler_ValidatorError(t *testing.T) {
 	expectedStatus := http.StatusUnauthorized
 	expectedMessage := "Unauthenticated"
 	whName, wh := newTestWebhook()
-	wh.Validators = config.Validators{
-		Fake: &config.FakeValidator{
-			ModeSuccess: false,
-		},
-	}
-	handler := newTestApi().createHandler(whName, wh)
+	wh.Validators = []string{"fake"}
+	api := newTestApi()
+	api.validators["fake"] = validator.NewFakeValidator(false)
+	handler := api.createHandler(whName, wh)
 
 	// Act
 	req := httptest.NewRequest(http.MethodPost, wh.Path, nil)

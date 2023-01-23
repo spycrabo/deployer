@@ -7,11 +7,9 @@ import (
 
 func TestRepo_New_DirCreated(t *testing.T) {
 	// Arrange
-	conf := &config.Config{
-		Runner: config.Runner{
-			Dir: &config.DirRunner{
-				Path: "test",
-			},
+	conf := config.Runner{
+		Dir: &config.DirRunner{
+			Path: "test",
 		},
 	}
 
@@ -29,9 +27,7 @@ func TestRepo_New_DirCreated(t *testing.T) {
 
 func TestRepo_New_NoRepo(t *testing.T) {
 	// Arrange
-	conf := &config.Config{
-		Runner: config.Runner{},
-	}
+	conf := config.Runner{}
 
 	// Act
 	_, err := NewRepo(conf)

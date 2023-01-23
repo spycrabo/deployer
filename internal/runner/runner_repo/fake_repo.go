@@ -15,7 +15,7 @@ func NewFakeRepo(modeSuccess bool) *FakeRepo {
 	}
 }
 
-func (f FakeRepo) PushTask(taskName string, vars map[string]string) error {
+func (f FakeRepo) PushTask(_ string, _ map[string]string) error {
 	if f.ModeSuccess {
 		return nil
 	}
@@ -36,16 +36,23 @@ func (f FakeRepo) GetNextTask() (*uuid.UUID, *RepoTask, error) {
 	return nil, nil, errors.New("fake error")
 }
 
-func (f FakeRepo) StartTask(uuid uuid.UUID) error {
+func (f FakeRepo) StartTask(_ uuid.UUID) error {
 	if f.ModeSuccess {
 		return nil
 	}
 	return errors.New("fake error")
 }
 
-func (f FakeRepo) FinishTask(uuid uuid.UUID) error {
+func (f FakeRepo) FinishTask(_ uuid.UUID) error {
 	if f.ModeSuccess {
 		return nil
 	}
 	return errors.New("fake error")
+}
+
+func (f FakeRepo) TotalRunningTasks() (uint, error) {
+	if f.ModeSuccess {
+		return 0, nil
+	}
+	return 0, errors.New("fake error")
 }
